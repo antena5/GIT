@@ -1,0 +1,58 @@
+CREATE DATABASE aulatriggers01
+GO
+USE aulatriggers01
+
+ 
+CREATE TABLE servico(
+id INT NOT NULL,
+nome VARCHAR(100),
+preco DECIMAL(7,2)
+PRIMARY KEY(ID))
+ 
+CREATE TABLE depto(
+codigo INT not null,
+nome VARCHAR(100),
+total_salarios DECIMAL(7,2)
+PRIMARY KEY(codigo))
+ 
+CREATE TABLE funcionario(
+id INT NOT NULL,
+nome VARCHAR(100),
+salario DECIMAL(7,2),
+depto INT NOT NULL
+PRIMARY KEY(id)
+FOREIGN KEY (depto) REFERENCES depto(codigo))
+ 
+INSERT INTO servico VALUES
+(1, 'Orçamento', 20.00),
+(2, 'Manutenção preventiva', 85.00)
+ 
+
+INSERT INTO depto (codigo, nome) VALUES
+(1,'RH'),
+(2,'DTI'),
+(4,'asdf')
+
+INSERT INTO depto(codigo, nome) VALUES (5,'asdf')
+ 
+SELECT * FROM depto
+SELECT * FROM funcionario
+SELECT * FROM servico
+
+CREATE TRIGGER t_atualizaSalario ON funcionario
+FOR INSERT, UPDATE, DELETE
+as
+BEGIN
+DECLARE
+@valores	DECIMAL(7,2),
+@depto		INT
+select @depto = depto, @valores = sum(salario) from funcionario group by depto
+update depto set total_salarios = (isnull(@valores,0)) where codigo = @depto
+end
+
+insert into funcionario values (12, 'LUIZA', 2500, 4)
+update funcionario set salario = 5000 where id = 11
+delete funcionario where id=12
+
+SELECT * FROM funcionario ORDER BY depto
+SELECT * FROM depto
