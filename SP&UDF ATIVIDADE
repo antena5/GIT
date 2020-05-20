@@ -1,0 +1,109 @@
+CREATE DATABASE VENDAS
+GO
+USE VENDAS
+
+CREATE TABLE CLIENTE(
+codigo int primary key,
+nome varchar(100),
+telefone int
+)
+
+CREATE TABLE PRODUTO(
+codP	INT				NOT NULL,
+nome	VARCHAR(100)	NOT NULL,
+valor	DECIMAL(7,2)	NOT NULL,
+PRIMARY KEY (codP))
+
+CREATE TABLE VENDA(
+codCli			INT			 NOT NULL,
+codProd			INT			 NOT NULL,
+Dt				datetime	 NOT NULL,
+quantidade		INT			 NOT NULL,
+valor_unit		DECIMAL(7,2) NOT NULL,
+valor_Total		DECIMAL(7,2) NOT NULL,
+PRIMARY KEY (codCli, codProd),
+FOREIGN KEY (codProd) references produto(codP),
+FOREIGN KEY (codCli) references cliente(codigo)
+)
+
+CREATE TABLE BONUS(
+id			  int primary key,
+valor		  decimal(8,2),
+premio		  varchar(100)
+)
+
+
+insert into produto values 
+(1, 'Placa mae','400'),
+(2, 'Placa Rede','40'),
+(3, 'Placa Wifi','120'),
+(4, 'Memória 4GB','250'),
+(5, 'Monitor','800'),
+(6, 'Processador','2000')
+SELECT * FROM produto
+
+insert into CLIENTE values
+(1, 'JOÃO', '994354444'),
+(2, 'JOANA', '992313333' ),
+(3, 'FABIO', '997396666' ),
+(4, 'RAQUEL', '934551111' )
+SELECT * FROM cliente
+
+insert into BONUS values
+(1, 1000, 'Jogo de Copos'),
+(2, 2000, 'Jogo de Pratos'),
+(3, 3000, 'Jogo de Talheres'),
+(4, 4000, 'Jogo de Porcelana'),
+(5, 5000, 'Jogo de Cristais')
+SELECT * FROM BONUS
+
+create procedure sp_Venda
+@codCli		INT,
+@codProd	INT,	
+@qtd		INT
+as
+begin
+	declare 
+	@valor_Total DECIMAL(7,2), 
+	@date datetime = getdate(),
+	@valorUnd DECIMAL(7,2) = (select valor from Produto where codP = @codProd)
+	set @valor_total = @qtd * @valorUnd
+	insert into venda(codCli, codProd, Dt, quantidade,valor_unit, valor_Total) 
+			  values (@codCli, @codProd, @date, @qtd, @valorUnd, @valor_Total)
+end
+SELECT * FROM venda 
+
+exec sp_Venda 1, 1, 10
+exec sp_Venda 2, 2, 3
+exec sp_Venda 3, 3, 20
+exec sp_Venda 4, 4, 6
+
+
+CREATE FUNCTION f_Premio()
+RETURNS @Premiado TABLE(
+codCli			INT,
+Nome			varchar(100),
+Valor_total		Decimal(7,2),
+Valor_Bonus		Decimal(7,2),
+Premios			varchar(100),
+Resto			Decimal(7,2))
+AS
+BEGIN
+insert @Premiado(codCli,Nome, Valor_total)
+select V.codCli, C.nome, V.valor_Total from venda V inner join cliente C
+on V.codCli = C.codigo 
+update @premiado set Valor_Bonus = Valor_total, Premios = 'NENHUM',	Resto = Valor_total	from bonus where id = 1 and Valor_total < valor
+update @premiado set Valor_Bonus = valor, Premios = premio, Resto = Valor_total - valor from bonus where id = 1 and Valor_total >= valor and Valor_total < (select valor from bonus where id = 2)
+update @premiado set Valor_Bonus = valor, Premios = premio, Resto = Valor_total - valor from bonus where id = 2 and Valor_total >= valor and Valor_total < (select valor from bonus where id = 3)
+update @premiado set Valor_Bonus = valor, Premios = premio, Resto = Valor_total - valor from bonus where id = 3 and Valor_total >= valor and Valor_total < (select valor from bonus where id = 4)
+update @premiado set Valor_Bonus = valor, Premios = premio, Resto = Valor_total - valor from bonus where id = 4 and Valor_total >= valor and Valor_total < (select valor from bonus where id = 5)
+update @premiado set Valor_Bonus = valor, Premios = premio, Resto = Valor_total - valor from bonus where id = 5 and Valor_total >= valor
+RETURN
+END
+
+select * from f_Premio()
+
+SELECT * FROM produto
+SELECT * FROM cliente
+SELECT * FROM venda 
+SELECT * FROM BONUS
