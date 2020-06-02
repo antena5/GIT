@@ -1,0 +1,131 @@
+create database TRIGGER_FUNCTION_A
+go
+use TRIGGER_FUNCTION_A
+
+--use master
+
+create table Times(
+Codigo	int primary key	not null,
+Times	varchar(100)	not null,
+Sigla	Varchar(3)		not null
+)
+
+create table Campeonato(
+Times		int primary key not null,
+Jogos		int not null,			 
+Vitorias	int not null,
+Empates		int not null,
+Derrotas	int not null,
+Gols_Pro	int not null,
+Gols_Contra int not null,
+foreign key(times) references times(codigo)
+)
+
+create table Jogos(
+TimeA	int not null,  
+TimeB	int not null,
+GolsA	int not null,
+GolsB	int not null,
+Dt_Hr	datetime not null,
+foreign key(TimeA) references times(codigo),
+foreign key(TimeB) references times(codigo),
+primary key(TimeA, TimeB, Dt_Hr)
+)
+
+
+
+CREATE TRIGGER in_Campeonato ON Times
+for INSERT
+as 
+BEGIN
+DECLARE @cod int
+set @cod = (select codigo from inserted)
+insert into Campeonato(times, Jogos, Vitorias, Empates, Derrotas, Gols_Pro, Gols_Contra)  values (@cod, 0, 0, 0, 0, 0 ,0 )
+END
+
+
+insert into times values (1, 'Barcelona', 'BAR')
+insert into times values (2, 'Celta de Vigo', 'CEL')
+insert into times values (3, 'Málaga', 'MAL')
+insert into times values (4, 'Real Madrid', 'RMA')
+
+select * from times
+select * from Campeonato
+
+
+CREATE TRIGGER up_Campeonato ON jogos
+FOR INSERT
+AS 
+BEGIN
+DECLARE 
+@timeA		int,
+@timeB		Int,
+@gols		int,
+@contras	int
+
+select @timeA = timeA, @timeB = timeB, @gols = golsA, @contras = golsB from inserted
+update Campeonato set Gols_Pro += @gols , Gols_Contra += @contras,  Jogos = (Jogos+1) where times = @timeA
+update Campeonato set Gols_Pro += @contras , Gols_Contra += @gols,  Jogos = (Jogos+1) where times = @timeB
+
+IF((@gols - @contras) > 0)
+	BEGIN
+	update campeonato set vitorias = (vitorias+1) where times = @timeA ;
+	update campeonato set derrotas = (derrotas+1) where times = @timeB;
+	END
+ELSE
+	BEGIN
+		IF((@gols - @contras) < 0)
+			BEGIN
+			update campeonato set derrotas = (derrotas+1) where times = @timeA ;
+			update campeonato set vitorias = (vitorias+1) where times = @timeB; 
+			END
+		ELSE
+			BEGIN
+			update campeonato set Empates = (Empates+1) where times = @timeA ;
+			update campeonato set Empates = (Empates+1) where times = @timeB;
+			END
+	END
+END
+
+SELECT * FROM Campeonato
+select * from jogos 
+
+
+insert into jogos values(1,2,2,3,'22/04/2013 15:00')
+insert into jogos values(1,3,4,3,'29/04/2013 15:00')
+insert into jogos values(1,4,5,3,'06/05/2013 15:00')
+insert into jogos values(2,1,0,3,'25/04/2013 15:00')
+insert into jogos values(2,3,2,0,'02/04/2013 15:00')
+insert into jogos values(2,4,3,3,'09/05/2013 15:00')
+insert into jogos values(3,1,2,3,'12/05/2013 15:00')
+insert into jogos values(3,2,3,1,'15/05/2013 15:00')
+insert into jogos values(3,4,0,1,'18/05/2013 15:00')
+insert into jogos values(4,1,0,3,'23/05/2013 15:00')
+insert into jogos values(4,2,4,0,'27/05/2013 15:00')
+insert into jogos values(4,3,2,0,'31/05/2013 15:00')
+
+create FUNCTION F_Campeonato()
+RETURNS @Tabela TABLE(
+Sigla		varchar(10),
+Jogos		int,			 
+Vitorias	int,
+Empates	    int,
+Derrotas	int,
+Gols_Pro	int,
+Gols_Contra int,
+Pontos		int
+)
+AS
+BEGIN
+insert @Tabela(Sigla, Jogos, Vitorias,Empates,Derrotas,Gols_Pro,Gols_Contra, Pontos)
+Select Sigla, Jogos, Vitorias,Empates,Derrotas,Gols_Pro,Gols_Contra, ((Vitorias*3)+Empates) as Pontos from campeonato inner join times 
+on times.Codigo = Campeonato.Times
+RETURN
+END
+
+select * from f_campeonato()
+
+select * from campeonato
+select * from jogos
+
+END
